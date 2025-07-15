@@ -2,12 +2,12 @@ import SimpleEncryption from './encryption';
 import { User, DiaryEntry } from '../types';
 
 class SecureStorage {
-  private static readonly USERS_KEY = 'dairy_users';
-  private static readonly ENTRIES_PREFIX = 'dairy_entries_';
+  private static readonly USERS_KEY = 'diary_users';
+  private static readonly ENTRIES_PREFIX = 'diary_entries_';
   
   // Save users list (encrypted with a master key)
   static saveUsers(users: User[]): void {
-    const masterKey = 'MyDairyApp2024';
+    const masterKey = 'MyDiaryApp2024';
     const encrypted = SimpleEncryption.encrypt(JSON.stringify(users), masterKey);
     localStorage.setItem(this.USERS_KEY, encrypted);
   }
@@ -15,7 +15,7 @@ class SecureStorage {
   // Load users list
   static loadUsers(): User[] {
     try {
-      const masterKey = 'MyDairyApp2024';
+      const masterKey = 'MyDiaryApp2024';
       const encrypted = localStorage.getItem(this.USERS_KEY);
       if (!encrypted) return [];
       
