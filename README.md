@@ -14,6 +14,8 @@ A beautiful, secure, and feature-rich personal diary application built with Reac
 - **Date-based Entries**: Create and organize entries by specific dates
 - **Page Types**: Choose between ruled and plain page layouts
 - **Rich Text Editor**: Clean, distraction-free writing experience
+- **Image Support**: Add up to 5 images per entry to preserve memories
+- **Image Viewer**: Click images to view them in full size
 - **Word & Character Count**: Track your writing progress
 - **Recent Entries**: Quick access to your latest journal entries
 
@@ -27,6 +29,14 @@ A beautiful, secure, and feature-rich personal diary application built with Reac
 - **Entry Statistics**: View total entries, monthly counts, and active days
 - **Date Selection**: Pick any date to view or create entries
 - **Entry Preview**: See entry content snippets in the dashboard
+
+### 💾 Backup & Restore
+- **Password-Protected Backups**: All backup files are encrypted with a password you choose
+- **Export Data**: Create encrypted backup files containing all your profiles and diary entries
+- **Import Data**: Restore your data on a new device from encrypted backup files
+- **Merge or Replace**: Choose to merge with existing data or replace everything
+- **Cross-Device Support**: Transfer your diary between devices easily and securely
+- **Privacy Protection**: Even if someone gets your backup file, they can't read it without your password
 
 ## 🏗️ Architecture
 
@@ -44,7 +54,8 @@ src/
 │   ├── DiaryDashboard.tsx    # Main dashboard view
 │   ├── DiaryEditor.tsx       # Entry editor component
 │   ├── LoginScreen.tsx       # Authentication screen
-│   └── ProfileSelector.tsx   # User profile selection
+│   ├── ProfileSelector.tsx   # User profile selection
+│   └── BackupRestore.tsx     # Backup and restore functionality
 ├── types/              # TypeScript type definitions
 │   └── index.ts
 ├── utils/              # Utility functions
@@ -70,6 +81,8 @@ Handles all data storage operations:
 - Encrypted entry storage
 - Password reset functionality
 - Data re-encryption when passwords change
+- Export/import backup functionality
+- Data merging and conflict resolution
 
 #### Encryption
 Simple XOR-based encryption for local data protection:
@@ -129,7 +142,9 @@ The built files will be in the `dist/` directory, ready for deployment.
 3. **Choose a date** using the date picker
 4. **Click "New Entry"** and select page type (ruled or plain)
 5. **Start writing** in the editor
-6. **Click "Save Entry"** when finished
+6. **Add images (optional)**: Click "Add Image" to upload photos (up to 5 images per entry, max 5MB each)
+7. **Click images** to view them in full size
+8. **Click "Save Entry"** when finished
 
 ### Managing Multiple Entries
 
@@ -145,6 +160,71 @@ The built files will be in the `dist/` directory, ready for deployment.
 3. **Answer your security question** correctly
 4. **Create a new secret code**
 5. **Your entries will be preserved** and re-encrypted with the new code
+
+### Backup & Restore Your Data
+
+#### Exporting Your Data (Creating a Backup)
+
+**Why backup?** Since all data is stored locally on your device, creating regular backups ensures you won't lose your diary entries if you switch devices, clear browser data, or encounter technical issues.
+
+1. **Log in to your profile** in the diary dashboard
+2. **Click the "Backup" button** in the top-right corner (database icon)
+3. **Click "Export Backup"** tab if not already selected
+4. **Enter a backup password** (minimum 4 characters) - this will encrypt your backup file
+5. **Confirm your password** to ensure you remember it correctly
+6. **Click "Download Encrypted Backup File"** to save your encrypted backup
+7. **Save the file securely** - store it in cloud storage (Google Drive, Dropbox, iCloud), email it to yourself, or save it on an external drive
+
+**🔒 Password Protection:**
+- Your backup file is encrypted with the password you choose
+- **Remember your password!** You'll need it to restore your data
+- Even if someone gets your backup file, they cannot read it without your password
+- The password protects all your data including diary entries, secret codes, and security answers
+
+**What gets exported:**
+- Your profile information (name, security question)
+- Your secret code (encrypted with your backup password)
+- All your diary entries with dates and content
+- **All images** attached to your entries (stored as base64)
+- Entry metadata (page types, creation dates)
+- All data is encrypted before being saved to the file
+
+#### Importing Your Data (Restoring from Backup)
+
+1. **Log in to your profile** (or create a new one if starting fresh)
+2. **Click the "Backup" button** in the top-right corner
+3. **Click "Import Backup"** tab
+4. **Choose import mode:**
+   - **Merge**: Adds imported data to existing data (skips duplicates)
+   - **Replace**: Replaces all existing data with imported data (⚠️ deletes current data)
+5. **Click "Select Backup File to Import"**
+6. **Choose your encrypted backup JSON file** from your device
+7. **Enter your backup password** when prompted (the password you used when creating the backup)
+8. **Click "Decrypt & Import"** to restore your data
+9. **Wait for confirmation** - you'll see a success message with the number of imported users and entries
+
+**Note:** If you have an old unencrypted backup file, it will still work, but new backups are always encrypted for your privacy.
+
+#### Best Practices for Backups
+
+- **Regular Backups**: Export your data weekly or monthly
+- **Strong Passwords**: Use a strong, memorable password for your backups (but different from your diary secret code)
+- **Remember Your Password**: Write down your backup password in a secure place - you cannot restore without it!
+- **Multiple Copies**: Keep backups in multiple locations (cloud + local)
+- **Secure Storage**: Even though backups are encrypted, store them in secure locations
+- **Version Naming**: The backup file includes the date, making it easy to track versions
+- **Before Major Changes**: Always backup before clearing browser data or switching devices
+- **Test Your Backups**: Periodically test restoring from a backup to ensure it works
+
+#### Transferring to a New Device
+
+1. **On your old device**: Export your data using the backup feature
+2. **Transfer the backup file** to your new device (via email, cloud storage, USB, etc.)
+3. **On your new device**: 
+   - Install/access the My Diary application
+   - Log in to your profile (or create it if needed)
+   - Import the backup file using the restore feature
+   - Your entries will be restored and ready to use!
 
 ## 🔧 Development
 
@@ -174,9 +254,11 @@ The project uses:
 
 ### Encryption Details
 - Uses XOR encryption with user-specific keys
-- All sensitive data is encrypted before storage
+- All sensitive data is encrypted before storage in the browser
 - Encryption keys are derived from user secret codes
 - No encryption keys are stored in plain text
+- **Backup files are encrypted** with a password you choose, protecting your data even if the file is accessed by others
+- Backup encryption uses the same XOR encryption method for consistency
 
 ### Data Privacy
 - All data is stored locally in the browser
@@ -186,9 +268,10 @@ The project uses:
 
 ### Limitations
 - This is a client-side application with local storage
-- Data is not backed up to the cloud
-- Clearing browser data will remove all entries
+- Data is not automatically synced to the cloud (manual backup required)
+- Clearing browser data will remove all entries (unless you have a backup)
 - Encryption is basic XOR - not suitable for high-security requirements
+- **Important**: Always create backups before switching devices or clearing browser data
 
 ## 🐛 Troubleshooting
 
@@ -202,6 +285,12 @@ The project uses:
 **"No profile found" during password reset**
 - Ensure you're using the exact name from your profile
 - Check for extra spaces in the name field
+
+**"Incorrect password" or "Failed to decrypt backup"**
+- Make sure you're using the exact password you used when creating the backup
+- Check for typos or case sensitivity issues
+- If you've forgotten your backup password, you cannot restore that backup file
+- Always remember or securely store your backup password
 
 **Application not loading**
 - Verify Node.js version is 16 or higher

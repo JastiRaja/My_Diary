@@ -20,7 +20,16 @@ class SimpleEncryption {
       encrypted.push(data.charCodeAt(i) ^ key[i % key.length]);
     }
     
-    return btoa(String.fromCharCode(...encrypted));
+    // Process in chunks to avoid stack overflow with large arrays
+    const CHUNK_SIZE = 8192; // Safe chunk size for String.fromCharCode
+    let result = '';
+    
+    for (let i = 0; i < encrypted.length; i += CHUNK_SIZE) {
+      const chunk = encrypted.slice(i, i + CHUNK_SIZE);
+      result += String.fromCharCode(...chunk);
+    }
+    
+    return btoa(result);
   }
   
   // Simple XOR decryption
@@ -28,13 +37,22 @@ class SimpleEncryption {
     try {
       const key = this.generateKey(secretCode);
       const decoded = atob(encryptedData);
-      const decrypted: string[] = [];
+      const decrypted: number[] = [];
       
       for (let i = 0; i < decoded.length; i++) {
-        decrypted.push(String.fromCharCode(decoded.charCodeAt(i) ^ key[i % key.length]));
+        decrypted.push(decoded.charCodeAt(i) ^ key[i % key.length]);
       }
       
-      return decrypted.join('');
+      // Process in chunks to avoid stack overflow with large arrays
+      const CHUNK_SIZE = 8192; // Safe chunk size for String.fromCharCode
+      let result = '';
+      
+      for (let i = 0; i < decrypted.length; i += CHUNK_SIZE) {
+        const chunk = decrypted.slice(i, i + CHUNK_SIZE);
+        result += String.fromCharCode(...chunk);
+      }
+      
+      return result;
     } catch (error) {
       throw new Error('Failed to decrypt data');
     }

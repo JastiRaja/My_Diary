@@ -1,13 +1,18 @@
 import React, { useState } from 'react';
 import { User, DiaryEntry } from '../types';
-import { Calendar, Plus, User as UserIcon, LogOut, FileText, Edit3 } from 'lucide-react';
+import { Calendar, Plus, User as UserIcon, LogOut, FileText, Edit3, Database, Image as ImageIcon, Trash2, AlertTriangle, Settings } from 'lucide-react';
+import BackupRestore from './BackupRestore';
 
 interface DiaryDashboardProps {
   user: User;
   entries: DiaryEntry[];
   onCreateEntry: (date: string, pageType: 'ruled' | 'plain') => void;
   onEditEntry: (entry: DiaryEntry) => void;
+  onDeleteEntry: (entryId: string) => void;
   onLogout: () => void;
+  onDeleteProfile?: (userId: string) => void;
+  onExport: () => { version: string; exportDate: string; users: User[]; entries: DiaryEntry[] };
+  onImport: (data: { version: string; exportDate: string; users: User[]; entries: DiaryEntry[] }, mergeMode: 'replace' | 'merge') => { success: boolean; message: string; importedUsers: number; importedEntries: number };
 }
 
 const DiaryDashboard: React.FC<DiaryDashboardProps> = ({
@@ -15,10 +20,18 @@ const DiaryDashboard: React.FC<DiaryDashboardProps> = ({
   entries,
   onCreateEntry,
   onEditEntry,
-  onLogout
+  onDeleteEntry,
+  onLogout,
+  onDeleteProfile,
+  onExport,
+  onImport
 }) => {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [showPageTypeModal, setShowPageTypeModal] = useState(false);
+  const [showBackupModal, setShowBackupModal] = useState(false);
+  const [entryToDelete, setEntryToDelete] = useState<DiaryEntry | null>(null);
+  const [showSettingsMenu, setShowSettingsMenu] = useState(false);
+  const [showDeleteProfileModal, setShowDeleteProfileModal] = useState(false);
 
   const todayEntries = entries.filter(entry => entry.date === selectedDate);
   const recentEntries = entries
@@ -54,13 +67,51 @@ const DiaryDashboard: React.FC<DiaryDashboardProps> = ({
               <p className="text-gray-600">Welcome back, {user.name}</p>
             </div>
           </div>
-          <button
-            onClick={onLogout}
-            className="flex items-center space-x-2 px-4 py-2 text-gray-600 hover:text-gray-900 transition-colors"
-          >
-            <LogOut className="w-5 h-5" />
-            <span>Logout</span>
-          </button>
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={() => setShowBackupModal(true)}
+              className="flex items-center space-x-2 px-4 py-2 text-gray-600 hover:text-gray-900 transition-colors"
+              title="Backup & Restore"
+            >
+              <Database className="w-5 h-5" />
+              <span className="hidden md:inline">Backup</span>
+            </button>
+            <div className="relative">
+              <button
+                onClick={() => setShowSettingsMenu(!showSettingsMenu)}
+                className="flex items-center space-x-2 px-4 py-2 text-gray-600 hover:text-gray-900 transition-colors"
+                title="Settings"
+              >
+                <Settings className="w-5 h-5" />
+              </button>
+              {showSettingsMenu && (
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+                  {onDeleteProfile && (
+                    <button
+                      onClick={() => {
+                        setShowSettingsMenu(false);
+                        setShowDeleteProfileModal(true);
+                      }}
+                      className="w-full text-left px-4 py-2 text-red-600 hover:bg-red-50 transition-colors flex items-center space-x-2"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      <span>Delete Profile</span>
+                    </button>
+                  )}
+                  <button
+                    onClick={() => {
+                      setShowSettingsMenu(false);
+                      onLogout();
+                    }}
+                    className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-50 transition-colors flex items-center space-x-2"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    <span>Logout</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </header>
 
@@ -119,18 +170,56 @@ const DiaryDashboard: React.FC<DiaryDashboardProps> = ({
                   {todayEntries.map((entry) => (
                     <div
                       key={entry.id}
-                      className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
-                      onClick={() => onEditEntry(entry)}
+                      className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow relative group"
                     >
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm text-gray-500 capitalize">
-                          {entry.pageType} page
-                        </span>
-                        <Edit3 className="w-4 h-4 text-gray-400" />
-                      </div>
-                      <p className="text-gray-900 line-clamp-3">
+                      <div 
+                        className="cursor-pointer"
+                        onClick={() => onEditEntry(entry)}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm text-gray-500 capitalize">
+                            {entry.pageType} page
+                          </span>
+                          <div className="flex items-center space-x-2">
+                            <Edit3 className="w-4 h-4 text-gray-400" />
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEntryToDelete(entry);
+                              }}
+                              className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-red-50 rounded text-red-500 hover:text-red-600"
+                              title="Delete entry"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      {entry.images && entry.images.length > 0 && (
+                        <div className="mb-2">
+                          <img
+                            src={entry.images[0]}
+                            alt="Entry preview"
+                            className="w-full h-32 object-cover rounded-lg border border-gray-200"
+                          />
+                          {entry.images.length > 1 && (
+                            <div className="absolute top-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded">
+                              +{entry.images.length - 1}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      <p className="text-gray-900 line-clamp-3 mb-2">
                         {entry.content || 'Empty entry...'}
                       </p>
+                      {entry.images && entry.images.length > 0 && (
+                        <div className="flex items-center space-x-2 mt-2">
+                          <ImageIcon className="w-4 h-4 text-gray-400" />
+                          <span className="text-xs text-gray-500">
+                            {entry.images.length} image{entry.images.length > 1 ? 's' : ''}
+                          </span>
+                        </div>
+                      )}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -163,9 +252,17 @@ const DiaryDashboard: React.FC<DiaryDashboardProps> = ({
                       <div className="text-sm text-gray-600 mb-1">
                         {new Date(entry.date).toLocaleDateString()}
                       </div>
-                      <p className="text-sm text-gray-900 line-clamp-2">
+                      <p className="text-sm text-gray-900 line-clamp-2 mb-1">
                         {entry.content || 'Empty entry...'}
                       </p>
+                      {entry.images && entry.images.length > 0 && (
+                        <div className="flex items-center space-x-1">
+                          <ImageIcon className="w-3 h-3 text-gray-400" />
+                          <span className="text-xs text-gray-500">
+                            {entry.images.length} photo{entry.images.length > 1 ? 's' : ''}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -227,6 +324,148 @@ const DiaryDashboard: React.FC<DiaryDashboardProps> = ({
             </button>
           </div>
         </div>
+      )}
+
+      {/* Backup/Restore Modal */}
+      {showBackupModal && (
+        <BackupRestore
+          onExport={onExport}
+          onImport={onImport}
+          onClose={() => setShowBackupModal(false)}
+        />
+      )}
+
+      {/* Delete Entry Confirmation Modal */}
+      {entryToDelete && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md">
+            <div className="flex items-start mb-4">
+              <div className="flex-shrink-0">
+                <AlertTriangle className="w-6 h-6 text-red-500" />
+              </div>
+              <div className="ml-3 flex-1">
+                <h3 className="text-lg font-semibold text-gray-900">Delete Entry</h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  Are you sure you want to delete this entry? This action cannot be undone.
+                </p>
+                {entryToDelete.content && (
+                  <p className="text-xs text-gray-500 mt-2 line-clamp-2 italic">
+                    "{entryToDelete.content.substring(0, 100)}..."
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="flex space-x-3 mt-6">
+              <button
+                onClick={() => setEntryToDelete(null)}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  onDeleteEntry(entryToDelete.id);
+                  setEntryToDelete(null);
+                }}
+                className="flex-1 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors"
+              >
+                Delete Entry
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Profile Confirmation Modal */}
+      {showDeleteProfileModal && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md">
+            <div className="flex items-start mb-4">
+              <div className="flex-shrink-0">
+                <AlertTriangle className="w-6 h-6 text-red-500" />
+              </div>
+              <div className="ml-3 flex-1">
+                <h3 className="text-lg font-semibold text-gray-900">Delete Profile</h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  Are you sure you want to delete <strong>{user.name}</strong>'s profile?
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+              <div className="flex items-start">
+                <AlertTriangle className="w-5 h-5 text-red-600 mr-2 mt-0.5 flex-shrink-0" />
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-red-900 mb-1">⚠️ Warning: This action cannot be undone!</p>
+                  <p className="text-xs text-red-800">
+                    This will permanently delete:
+                  </p>
+                  <ul className="text-xs text-red-800 mt-1 list-disc list-inside space-y-1">
+                    <li>All {entries.length} diary entries for this profile</li>
+                    <li>All images attached to entries</li>
+                    <li>Profile settings and security questions</li>
+                  </ul>
+                  <p className="text-xs font-semibold text-red-900 mt-2">
+                    💡 Make sure to backup your data before deleting!
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Backup Option */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+              <div className="flex items-start">
+                <Database className="w-5 h-5 text-blue-600 mr-2 mt-0.5 flex-shrink-0" />
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-blue-900 mb-2">
+                    Backup Your Data First
+                  </p>
+                  <p className="text-xs text-blue-800 mb-3">
+                    Create a backup of your profile and all entries before deleting. You can restore this backup later if needed.
+                  </p>
+                  <button
+                    onClick={() => {
+                      setShowDeleteProfileModal(false);
+                      setShowBackupModal(true);
+                    }}
+                    className="w-full px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white rounded-lg transition-all flex items-center justify-center space-x-2 text-sm font-semibold"
+                  >
+                    <Database className="w-4 h-4" />
+                    <span>Create Backup Now</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex space-x-3">
+              <button
+                onClick={() => setShowDeleteProfileModal(false)}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  if (onDeleteProfile) {
+                    onDeleteProfile(user.id);
+                  }
+                  setShowDeleteProfileModal(false);
+                }}
+                className="flex-1 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors font-semibold"
+              >
+                Delete Profile
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Click outside to close settings menu */}
+      {showSettingsMenu && (
+        <div
+          className="fixed inset-0 z-40"
+          onClick={() => setShowSettingsMenu(false)}
+        />
       )}
     </div>
   );

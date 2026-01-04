@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, DiaryEntry, ViewMode } from './types';
+import { User, DiaryEntry, ViewMode, BackupData } from './types';
 import ProfileSelector from './components/ProfileSelector';
 import LoginScreen from './components/LoginScreen';
 import DiaryDashboard from './components/DiaryDashboard';
@@ -94,12 +94,13 @@ function App() {
     setViewMode('entry');
   };
 
-  const handleSaveEntry = (content: string) => {
+  const handleSaveEntry = (content: string, images: string[] = []) => {
     if (!currentEntry || !currentUser) return;
 
     const updatedEntry = {
       ...currentEntry,
       content,
+      images: images.length > 0 ? images : undefined,
       updatedAt: new Date().toISOString()
     };
 
@@ -113,7 +114,12 @@ function App() {
     setEntries(updatedEntries);
     
     // Save to encrypted storage
-    SecureStorage.saveUserEntries(currentUser.id, updatedEntries, currentUser.secretCode);
+    const saveResult = SecureStorage.saveUserEntries(currentUser.id, updatedEntries, currentUser.secretCode);
+    
+    if (!saveResult.success) {
+      // Throw error to be caught by DiaryEditor
+      throw new Error(saveResult.error || 'Failed to save entry');
+    }
     
     setViewMode('diary');
     setCurrentEntry(null);
@@ -165,12 +171,110 @@ function App() {
     setViewMode('diary');
   };
 
+  const handleDeleteEntry = (entryId: string) => {
+    if (!currentUser) return;
+
+    const updatedEntries = entries.filter(e => e.id !== entryId);
+    setEntries(updatedEntries);
+    
+    // Save to encrypted storage
+    const saveResult = SecureStorage.saveUserEntries(currentUser.id, updatedEntries, currentUser.secretCode);
+    
+    if (!saveResult.success) {
+      console.error('Failed to delete entry:', saveResult.error);
+      // Revert the change if save failed
+      setEntries(entries);
+      alert('Failed to delete entry. Please try again.');
+    }
+  };
+
+  const handleExport = (): BackupData => {
+    if (!currentUser) {
+      throw new Error('No user logged in');
+    }
+    return SecureStorage.exportUserData(currentUser.id, currentUser.secretCode, entries);
+  };
+
+  const handleImport = (data: BackupData, mergeMode: 'replace' | 'merge') => {
+    const result = SecureStorage.importBackupData(data, mergeMode);
+    
+    if (result.success) {
+      // Reload users and entries
+      const loadedUsers = SecureStorage.loadUsers();
+      setUsers(loadedUsers);
+      
+      // If current user was imported, reload their entries
+      if (currentUser) {
+        const updatedUser = loadedUsers.find(u => u.id === currentUser.id);
+        if (updatedUser) {
+          try {
+            const userEntries = SecureStorage.loadUserEntries(updatedUser.id, updatedUser.secretCode);
+            setEntries(userEntries);
+            setCurrentUser(updatedUser);
+          } catch (error) {
+            console.warn('Could not reload entries after import:', error);
+          }
+        }
+      }
+    }
+    
+    return result;
+  };
+
+  const handleImportFromLogin = (importedUser: User | null) => {
+    if (importedUser && importedUser.secretCode) {
+      // Auto-login the imported user
+      setCurrentUser(importedUser);
+      setSelectedUser(importedUser);
+      
+      // Load user's entries
+      try {
+        const userEntries = SecureStorage.loadUserEntries(importedUser.id, importedUser.secretCode);
+        setEntries(userEntries);
+        setViewMode('diary');
+      } catch (error) {
+        console.warn('Could not load entries for imported user:', error);
+        setEntries([]);
+        setViewMode('diary');
+      }
+    } else {
+      // Import successful but no user to auto-login, go back to profiles
+      const loadedUsers = SecureStorage.loadUsers();
+      setUsers(loadedUsers);
+      setViewMode('profiles');
+    }
+  };
+
+  const handleDeleteUser = (userId: string) => {
+    const success = SecureStorage.deleteUser(userId);
+    
+    if (success) {
+      // Reload users
+      const loadedUsers = SecureStorage.loadUsers();
+      setUsers(loadedUsers);
+      
+      // If deleted user was current user, logout
+      if (currentUser && currentUser.id === userId) {
+        handleLogout();
+      }
+      
+      // If deleted user was selected user, clear selection
+      if (selectedUser && selectedUser.id === userId) {
+        setSelectedUser(null);
+      }
+    } else {
+      alert('Failed to delete profile. Please try again.');
+    }
+  };
+
   if (viewMode === 'profiles') {
     return (
       <ProfileSelector
         users={users}
         onSelectUser={handleSelectUser}
         onCreateUser={handleCreateUser}
+        onImport={handleImport}
+        onImportSuccess={handleImportFromLogin}
       />
     );
   }
@@ -184,6 +288,8 @@ function App() {
         isCreating={!selectedUser}
         onCreateUser={handleCreateNewUser}
         onPasscodeReset={handlePasscodeReset}
+        onImport={handleImport}
+        onImportSuccess={handleImportFromLogin}
       />
     );
   }
@@ -195,7 +301,11 @@ function App() {
         entries={entries}
         onCreateEntry={handleCreateEntry}
         onEditEntry={handleEditEntry}
+        onDeleteEntry={handleDeleteEntry}
         onLogout={handleLogout}
+        onDeleteProfile={handleDeleteUser}
+        onExport={handleExport}
+        onImport={handleImport}
       />
     );
   }
