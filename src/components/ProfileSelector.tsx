@@ -653,7 +653,7 @@ const ProfileSelector: React.FC<ProfileSelectorProps> = ({
                     <p className="text-sm font-semibold text-gray-900 mb-1">🖥️ Desktop (Chrome/Edge):</p>
                     <ul className="text-xs text-gray-600 space-y-1 list-disc list-inside ml-2">
                       <li>Look for the install icon (➕) in your browser's address bar</li>
-                      <li>Or click the menu (⋮) →"cast,save and share" → "Install My Diary" or "Install app"</li>
+                      <li>Or click the menu (⋮) → "cast,save and share" → "Install My Diary" or "Install app"</li>
                       <li>Click "Install" when prompted</li>
                     </ul>
                   </div>

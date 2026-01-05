@@ -145,7 +145,7 @@ const DiaryDashboard: React.FC<DiaryDashboardProps> = ({
         </div>
       </header>
 
-      <div className="max-w-6xl mx-auto px-4 py-8">
+      <div className="max-w-6xl mx-auto px-4 py-8 pb-24">
         {/* Offline Use Notice */}
         {!window.matchMedia('(display-mode: standalone)').matches && (window.navigator as any).standalone !== true && (
           <div className="mb-6 bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-200 rounded-xl p-4 shadow-sm">
@@ -178,7 +178,7 @@ const DiaryDashboard: React.FC<DiaryDashboardProps> = ({
                         } else if (isAndroid) {
                           message = 'Tap menu (⋮) → "Install app" or "Add to Home screen"';
                         } else {
-                          message = 'Look for the install icon (➕) in your browser\'s address bar, or use browser menu → "Install"';
+                          message = 'Look for the install icon (➕) in your browser\'s address bar, or use browser menu → "cast, save and share" → "Install My Diary" or "Install app"';
                         }
                         
                         alert(`Install Instructions:\n\n${message}\n\nAfter installation, the app will work completely offline!`);
@@ -544,6 +544,54 @@ const DiaryDashboard: React.FC<DiaryDashboardProps> = ({
           className="fixed inset-0 z-40"
           onClick={() => setShowSettingsMenu(false)}
         />
+      )}
+
+      {/* Fixed Install Banner at Bottom */}
+      {!window.matchMedia('(display-mode: standalone)').matches && (window.navigator as any).standalone !== true && (
+        <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-lg z-40 border-t border-blue-500">
+          <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+            <div className="flex items-center space-x-3 flex-1">
+              <Download className="w-5 h-5 flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold">
+                  📱 Install this app for offline use
+                </p>
+                <p className="text-xs text-blue-100">
+                  Works 100% offline • Fast access • No internet needed
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-2 ml-4">
+              <button
+                onClick={() => {
+                  // Try to trigger the install prompt
+                  const event = new Event('show-install-prompt');
+                  window.dispatchEvent(event);
+                  
+                  // Show instructions if prompt not available
+                  setTimeout(() => {
+                    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+                    const isAndroid = /Android/.test(navigator.userAgent);
+                    let message = '';
+                    
+                    if (isIOS) {
+                      message = 'Tap the Share button (□↑) → "Add to Home Screen"';
+                    } else if (isAndroid) {
+                      message = 'Tap menu (⋮) → "Install app" or "Add to Home screen"';
+                    } else {
+                      message = 'Look for the install icon (➕) in your browser\'s address bar, or use browser menu → "cast, save and share" → "Install My Diary" or "Install app"';
+                    }
+                    
+                    alert(`Install Instructions:\n\n${message}\n\nAfter installation, the app will work completely offline!`);
+                  }, 200);
+                }}
+                className="px-4 py-2 bg-white text-blue-600 font-semibold rounded-lg hover:bg-blue-50 transition-all text-sm shadow-md"
+              >
+                Install Now
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Install Prompt */}
