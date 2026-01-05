@@ -142,7 +142,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({
           return;
         }
         try {
-          onLogin(secretCode);
+        onLogin(secretCode);
         } catch (err) {
           console.error('Error in handleSubmit:', err);
           setError(err instanceof Error ? err.message : 'Authentication failed');

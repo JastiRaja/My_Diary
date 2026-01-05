@@ -13,22 +13,54 @@ const InstallPrompt: React.FC = () => {
 
   useEffect(() => {
     // Check if app is already installed
-    if (window.matchMedia('(display-mode: standalone)').matches) {
+    if (window.matchMedia('(display-mode: standalone)').matches || 
+        (window.navigator as any).standalone === true) {
+      setIsInstalled(true);
+      return;
+    }
+
+    // For iOS Safari - check if it's already added to home screen
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isInStandaloneMode = (window.navigator as any).standalone === true;
+    if (isIOS && isInStandaloneMode) {
       setIsInstalled(true);
       return;
     }
 
     // Listen for the beforeinstallprompt event
     const handleBeforeInstallPrompt = (e: Event) => {
+      console.log('beforeinstallprompt event fired');
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
       // Show prompt after a delay
       setTimeout(() => {
-        setShowPrompt(true);
+        if (!sessionStorage.getItem('installPromptDismissed')) {
+          setShowPrompt(true);
+        }
       }, 3000);
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    
+    // Debug: Log if event never fires
+    setTimeout(() => {
+      if (!deferredPrompt && !isInstalled) {
+        console.log('Install prompt not available. Possible reasons:');
+        console.log('- App already installed');
+        console.log('- Browser does not support PWA installation');
+        console.log('- Missing icons in manifest');
+        console.log('- Not served over HTTPS (localhost is OK)');
+      }
+    }, 5000);
+
+    // Listen for manual install trigger from settings
+    const handleShowInstallPrompt = () => {
+      if (deferredPrompt) {
+        setShowPrompt(true);
+      }
+    };
+
+    window.addEventListener('show-install-prompt', handleShowInstallPrompt);
 
     // Check if app was just installed
     window.addEventListener('appinstalled', () => {
@@ -39,8 +71,9 @@ const InstallPrompt: React.FC = () => {
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('show-install-prompt', handleShowInstallPrompt);
     };
-  }, []);
+  }, [deferredPrompt]);
 
   const handleInstallClick = async () => {
     if (!deferredPrompt) return;
@@ -67,8 +100,16 @@ const InstallPrompt: React.FC = () => {
     sessionStorage.setItem('installPromptDismissed', 'true');
   };
 
-  // Don't show if already installed or dismissed in this session
-  if (isInstalled || !showPrompt || !deferredPrompt || sessionStorage.getItem('installPromptDismissed')) {
+  // Don't show if already installed
+  if (isInstalled) {
+    return null;
+  }
+
+  // Show if manually triggered, even if dismissed before
+  const isManuallyTriggered = showPrompt && deferredPrompt;
+  
+  // Don't show if dismissed and not manually triggered
+  if (!isManuallyTriggered && (sessionStorage.getItem('installPromptDismissed') === 'true' || !showPrompt || !deferredPrompt)) {
     return null;
   }
 
@@ -85,8 +126,18 @@ const InstallPrompt: React.FC = () => {
             Install My Diary
           </h3>
           <p className="text-xs text-gray-600 mb-3">
-            Install this app on your device for offline access and a better experience.
+            Install this app on your device for offline access and a better experience. Works without internet!
           </p>
+          {!deferredPrompt && (
+            <div className="text-xs text-blue-600 mb-2 space-y-1">
+              <p className="font-semibold">Installation Options:</p>
+              <ul className="list-disc list-inside space-y-0.5 ml-2">
+                <li><strong>Chrome/Edge:</strong> Look for install icon (➕) in address bar</li>
+                <li><strong>Android:</strong> Menu (⋮) → "Install app" or "Add to Home screen"</li>
+                <li><strong>iOS Safari:</strong> Share (□↑) → "Add to Home Screen"</li>
+              </ul>
+            </div>
+          )}
           <div className="flex space-x-2">
             <button
               onClick={handleInstallClick}

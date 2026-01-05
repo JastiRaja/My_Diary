@@ -125,8 +125,8 @@ class SecureStorage {
     error?: string;
   } {
     try {
-      const userEntries = entries.filter(entry => entry.userId === userId);
-      const encrypted = SimpleEncryption.encrypt(JSON.stringify(userEntries), secretCode);
+    const userEntries = entries.filter(entry => entry.userId === userId);
+    const encrypted = SimpleEncryption.encrypt(JSON.stringify(userEntries), secretCode);
       
       // Check if data is too large
       const estimatedSize = encrypted.length;
@@ -139,7 +139,7 @@ class SecureStorage {
         };
       }
       
-      localStorage.setItem(this.ENTRIES_PREFIX + userId, encrypted);
+    localStorage.setItem(this.ENTRIES_PREFIX + userId, encrypted);
       return { success: true };
     } catch (error) {
       if (error instanceof DOMException && error.name === 'QuotaExceededError') {

@@ -136,22 +136,37 @@ The built files will be in the `dist/` directory, ready for deployment.
 
 **My Diary is a Progressive Web App (PWA)** - this means you can install it on your device and use it completely offline!
 
+#### ⚠️ Important: Create Icons First
+
+For the install prompt to appear, you need to create two icon files:
+1. Open `public/generate-icons.html` in your browser
+2. Click "Download Both Icons" 
+3. The icons will be saved - make sure they're in the `public` folder
+4. Rebuild: `npm run build`
+
+**Or create manually:**
+- `public/pwa-192x192.png` (192x192 pixels)
+- `public/pwa-512x512.png` (512x512 pixels)
+
 #### Desktop Installation (Chrome/Edge)
 
 1. **Open the application** in your browser
-2. **Look for the install icon** in the address bar (or a popup will appear)
-3. **Click "Install"** when prompted
-4. The app will be installed and accessible from your desktop/start menu
-5. **Works completely offline** - no internet connection needed!
+2. **Look for the install icon (➕)** in the address bar
+3. **Or click Settings → "Install App"** in the dashboard
+4. **Click "Install"** when prompted
+5. The app will be installed and accessible from your desktop/start menu
+6. **Works completely offline** - no internet connection needed!
 
 #### Mobile Installation (Android)
 
 1. **Open the application** in Chrome browser
 2. **Tap the menu** (three dots) in the top-right
-3. **Select "Add to Home Screen"** or "Install App"
+3. **Select "Add to Home Screen"** or "Install App" or "Install"
 4. **Confirm installation**
 5. The app icon will appear on your home screen
 6. **Works completely offline** - no internet connection needed!
+
+**Note:** If "Install App" doesn't appear, use "Add to Home Screen" - it works the same way!
 
 #### Mobile Installation (iOS/Safari)
 
@@ -354,10 +369,15 @@ The project uses:
 - Check browser console for error messages
 
 **Install prompt not showing**
+- **Icons are required!** Create `pwa-192x192.png` and `pwa-512x512.png` in the `public` folder
+  - Use `public/generate-icons.html` to generate them easily
+  - Or use an online tool like https://realfavicongenerator.net/
 - Make sure you're using a supported browser (Chrome, Edge, Safari)
 - The app must be served over HTTPS (or localhost for development)
 - Clear browser cache and reload
 - Check if the app is already installed
+- **Manual install:** Use Settings → "Install App" button, or browser menu → "Install"
+- Some browsers require user interaction before showing the prompt
 
 ### Browser Compatibility
 - Chrome/Chromium (recommended)

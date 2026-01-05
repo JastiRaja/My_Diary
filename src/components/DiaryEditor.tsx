@@ -34,7 +34,7 @@ const DiaryEditor: React.FC<DiaryEditorProps> = ({
     setSaveError(null);
     try {
       onSave(content, images);
-      setHasChanges(false);
+    setHasChanges(false);
     } catch (error) {
       setSaveError(error instanceof Error ? error.message : 'Failed to save entry');
     }

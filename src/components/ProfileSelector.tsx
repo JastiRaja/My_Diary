@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { User, BackupData } from '../types';
-import { Plus, User as UserIcon, Upload, X, Info, CheckCircle, AlertCircle, Eye, EyeOff, Lock, Trash2, AlertTriangle } from 'lucide-react';
+import { Plus, User as UserIcon, Upload, X, Info, CheckCircle, AlertCircle, Eye, EyeOff, Lock, Trash2, AlertTriangle, Download } from 'lucide-react';
 import SimpleEncryption from '../utils/encryption';
 
 interface ProfileSelectorProps {
@@ -33,6 +33,7 @@ const ProfileSelector: React.FC<ProfileSelectorProps> = ({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isEncryptedBackup, setIsEncryptedBackup] = useState(false);
   const [mergeMode, setMergeMode] = useState<'replace' | 'merge'>('merge');
+  const [showInstallModal, setShowInstallModal] = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   // Show info modal when there are no users (first time user)
@@ -205,6 +206,54 @@ const ProfileSelector: React.FC<ProfileSelectorProps> = ({
           </p>
         </div>
 
+        {/* Offline/PWA Info Banner */}
+        {!window.matchMedia('(display-mode: standalone)').matches && (window.navigator as any).standalone !== true && (
+          <div className="mb-8 bg-gradient-to-r from-blue-500/20 to-cyan-500/20 backdrop-blur-md rounded-2xl p-6 border border-blue-300/30 shadow-lg">
+            <div className="flex items-start">
+              <Download className="w-6 h-6 text-blue-300 mr-3 mt-1 flex-shrink-0" />
+              <div className="flex-1">
+                <h3 className="text-xl font-bold text-white mb-2">📱 Install for Offline Use</h3>
+                <p className="text-blue-100 mb-3">
+                  <strong>Download and install this app</strong> to use it completely offline! No internet connection needed after installation.
+                </p>
+                <div className="bg-white/10 rounded-lg p-3 mb-3">
+                  <p className="text-sm text-blue-50 font-semibold mb-2">✨ Benefits:</p>
+                  <ul className="text-xs text-blue-100 space-y-1 list-disc list-inside">
+                    <li>Works 100% offline - no internet required</li>
+                    <li>Fast access from your home screen/desktop</li>
+                    <li>Native app experience</li>
+                    <li>All your data stays on your device</li>
+                  </ul>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <button
+                    onClick={() => {
+                      // Try to trigger the install prompt
+                      const event = new Event('show-install-prompt');
+                      window.dispatchEvent(event);
+                      
+                      // Show manual instructions modal after a short delay
+                      setTimeout(() => {
+                        setShowInstallModal(true);
+                      }, 200);
+                    }}
+                    className="px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white rounded-lg transition-all flex items-center justify-center space-x-2 text-sm font-medium shadow-lg"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>Install App Now</span>
+                  </button>
+                  <button
+                    onClick={() => setShowInfoModal(true)}
+                    className="px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg transition-colors text-sm font-medium"
+                  >
+                    Learn More
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Info Banner for first-time users */}
         {users.length === 0 && (
           <div className="mb-8 bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20 shadow-lg">
@@ -252,9 +301,9 @@ const ProfileSelector: React.FC<ProfileSelectorProps> = ({
               <div 
                 className={`
                   w-24 h-24 md:w-32 md:h-32 rounded-full flex items-center justify-center cursor-pointer
-                  ${avatarColors[index % avatarColors.length]}
-                  shadow-lg transition-all duration-300
-                  ${hoveredUser === user.id ? 'shadow-2xl ring-4 ring-white/30' : ''}
+                ${avatarColors[index % avatarColors.length]}
+                shadow-lg transition-all duration-300
+                ${hoveredUser === user.id ? 'shadow-2xl ring-4 ring-white/30' : ''}
                 `}
                 onClick={() => onSelectUser(user)}
               >
@@ -306,6 +355,27 @@ const ProfileSelector: React.FC<ProfileSelectorProps> = ({
             </div>
 
             <div className="space-y-4 text-gray-700">
+              <div className="bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-start mb-3">
+                  <Download className="w-5 h-5 text-blue-600 mr-2 mt-0.5 flex-shrink-0" />
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-blue-900 mb-2">📱 Install for Offline Use</h3>
+                    <p className="text-sm text-blue-800 mb-2">
+                      <strong>My Diary is a Progressive Web App (PWA)</strong> - you can install it on your device and use it completely offline!
+                    </p>
+                    <ul className="text-xs text-blue-700 space-y-1 list-disc list-inside ml-2">
+                      <li>Works 100% offline - no internet required</li>
+                      <li>Install on desktop, Android, or iOS</li>
+                      <li>Fast access from home screen/desktop</li>
+                      <li>All data stored locally on your device</li>
+                    </ul>
+                    <p className="text-xs font-semibold text-blue-900 mt-2">
+                      💡 Click "Install App" button above or look for install icon in browser address bar
+                    </p>
+                  </div>
+                </div>
+              </div>
+
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <h3 className="font-semibold text-blue-900 mb-2">Why Use Backups?</h3>
                 <p className="text-sm text-blue-800">
@@ -543,6 +613,87 @@ const ProfileSelector: React.FC<ProfileSelectorProps> = ({
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Install Instructions Modal */}
+      {showInstallModal && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-2xl font-bold text-gray-900 flex items-center">
+                <Download className="w-6 h-6 mr-2 text-blue-500" />
+                Install App for Offline Use
+              </h3>
+              <button
+                onClick={() => setShowInstallModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="space-y-4 text-gray-700">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <p className="text-sm text-blue-800 mb-3">
+                  <strong>Install this app</strong> to use it completely offline! No internet connection needed after installation.
+                </p>
+                <p className="text-xs text-blue-700 font-semibold">
+                  ✨ Benefits: Works 100% offline • Fast access • Native app experience • All data stays on your device
+                </p>
+              </div>
+
+              <div>
+                <h3 className="font-semibold text-gray-900 mb-3">Installation Instructions:</h3>
+                <div className="space-y-3">
+                  {/* Desktop Chrome/Edge */}
+                  <div className="bg-gray-50 rounded-lg p-3">
+                    <p className="text-sm font-semibold text-gray-900 mb-1">🖥️ Desktop (Chrome/Edge):</p>
+                    <ul className="text-xs text-gray-600 space-y-1 list-disc list-inside ml-2">
+                      <li>Look for the install icon (➕) in your browser's address bar</li>
+                      <li>Or click the menu (⋮) →"cast,save and share" → "Install My Diary" or "Install app"</li>
+                      <li>Click "Install" when prompted</li>
+                    </ul>
+                  </div>
+
+                  {/* Android */}
+                  <div className="bg-gray-50 rounded-lg p-3">
+                    <p className="text-sm font-semibold text-gray-900 mb-1">📱 Android (Chrome):</p>
+                    <ul className="text-xs text-gray-600 space-y-1 list-disc list-inside ml-2">
+                      <li>Tap the menu button (⋮) in the top right</li>
+                      <li>Select "Install app" or "Add to Home screen"</li>
+                      <li>Tap "Install" to confirm</li>
+                    </ul>
+                  </div>
+
+                  {/* iOS */}
+                  <div className="bg-gray-50 rounded-lg p-3">
+                    <p className="text-sm font-semibold text-gray-900 mb-1">🍎 iOS (Safari):</p>
+                    <ul className="text-xs text-gray-600 space-y-1 list-disc list-inside ml-2">
+                      <li>Tap the Share button (□↑) at the bottom</li>
+                      <li>Scroll down and tap "Add to Home Screen"</li>
+                      <li>Tap "Add" to confirm</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                <p className="text-xs text-yellow-800">
+                  <strong>💡 Note:</strong> If you see an install prompt above, click "Install" there. Otherwise, follow the manual instructions for your device.
+                </p>
+              </div>
+
+              <div className="flex space-x-3 pt-2">
+                <button
+                  onClick={() => setShowInstallModal(false)}
+                  className="flex-1 px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-semibold rounded-lg hover:shadow-lg transition-all"
+                >
+                  Got It
+                </button>
+              </div>
             </div>
           </div>
         </div>

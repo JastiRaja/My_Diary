@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { User, DiaryEntry } from '../types';
-import { Calendar, Plus, User as UserIcon, LogOut, FileText, Edit3, Database, Image as ImageIcon, Trash2, AlertTriangle, Settings } from 'lucide-react';
+import { Calendar, Plus, User as UserIcon, LogOut, FileText, Edit3, Database, Image as ImageIcon, Trash2, AlertTriangle, Settings, Download } from 'lucide-react';
 import BackupRestore from './BackupRestore';
+import InstallPrompt from './InstallPrompt';
 
 interface DiaryDashboardProps {
   user: User;
@@ -86,6 +87,35 @@ const DiaryDashboard: React.FC<DiaryDashboardProps> = ({
               </button>
               {showSettingsMenu && (
                 <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+                  <button
+                    onClick={() => {
+                      setShowSettingsMenu(false);
+                      // Trigger install prompt if available
+                      const event = new Event('show-install-prompt');
+                      window.dispatchEvent(event);
+                      
+                      // Show instructions if prompt not available
+                      setTimeout(() => {
+                        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+                        const isAndroid = /Android/.test(navigator.userAgent);
+                        let message = '';
+                        
+                        if (isIOS) {
+                          message = 'Tap the Share button (□↑) → "Add to Home Screen"';
+                        } else if (isAndroid) {
+                          message = 'Tap menu (⋮) → "Install app" or "Add to Home screen"';
+                        } else {
+                          message = 'Look for the install icon (➕) in your browser\'s address bar, or use browser menu → "Install"';
+                        }
+                        
+                        alert(`Install Instructions:\n\n${message}\n\nAfter installation, the app will work completely offline!`);
+                      }, 100);
+                    }}
+                    className="w-full text-left px-4 py-2 text-purple-600 hover:bg-purple-50 transition-colors flex items-center space-x-2"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>Install App</span>
+                  </button>
                   {onDeleteProfile && (
                     <button
                       onClick={() => {
@@ -116,6 +146,54 @@ const DiaryDashboard: React.FC<DiaryDashboardProps> = ({
       </header>
 
       <div className="max-w-6xl mx-auto px-4 py-8">
+        {/* Offline Use Notice */}
+        {!window.matchMedia('(display-mode: standalone)').matches && (window.navigator as any).standalone !== true && (
+          <div className="mb-6 bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-200 rounded-xl p-4 shadow-sm">
+            <div className="flex items-start">
+              <Download className="w-5 h-5 text-blue-600 mr-3 mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-semibold text-blue-900 mb-1">
+                      💡 Install for Offline Use
+                    </h3>
+                    <p className="text-xs text-blue-700">
+                      Install this app to use it completely offline. No internet connection needed after installation!
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      // Try to trigger the install prompt
+                      const event = new Event('show-install-prompt');
+                      window.dispatchEvent(event);
+                      
+                      // Show instructions if prompt not available
+                      setTimeout(() => {
+                        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+                        const isAndroid = /Android/.test(navigator.userAgent);
+                        let message = '';
+                        
+                        if (isIOS) {
+                          message = 'Tap the Share button (□↑) → "Add to Home Screen"';
+                        } else if (isAndroid) {
+                          message = 'Tap menu (⋮) → "Install app" or "Add to Home screen"';
+                        } else {
+                          message = 'Look for the install icon (➕) in your browser\'s address bar, or use browser menu → "Install"';
+                        }
+                        
+                        alert(`Install Instructions:\n\n${message}\n\nAfter installation, the app will work completely offline!`);
+                      }, 200);
+                    }}
+                    className="ml-4 px-3 py-1.5 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white text-xs font-semibold rounded-lg transition-all shadow-sm"
+                  >
+                    Install
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
@@ -174,14 +252,14 @@ const DiaryDashboard: React.FC<DiaryDashboardProps> = ({
                     >
                       <div 
                         className="cursor-pointer"
-                        onClick={() => onEditEntry(entry)}
-                      >
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-sm text-gray-500 capitalize">
-                            {entry.pageType} page
-                          </span>
+                      onClick={() => onEditEntry(entry)}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm text-gray-500 capitalize">
+                          {entry.pageType} page
+                        </span>
                           <div className="flex items-center space-x-2">
-                            <Edit3 className="w-4 h-4 text-gray-400" />
+                        <Edit3 className="w-4 h-4 text-gray-400" />
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -206,7 +284,7 @@ const DiaryDashboard: React.FC<DiaryDashboardProps> = ({
                               +{entry.images.length - 1}
                             </div>
                           )}
-                        </div>
+                      </div>
                       )}
                       <p className="text-gray-900 line-clamp-3 mb-2">
                         {entry.content || 'Empty entry...'}
@@ -467,6 +545,9 @@ const DiaryDashboard: React.FC<DiaryDashboardProps> = ({
           onClick={() => setShowSettingsMenu(false)}
         />
       )}
+
+      {/* Install Prompt */}
+      <InstallPrompt />
     </div>
   );
 };
