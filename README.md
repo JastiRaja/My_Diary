@@ -25,6 +25,13 @@ A beautiful, secure, and feature-rich personal diary application built with Reac
 - **Intuitive Navigation**: Easy-to-use interface with clear visual hierarchy
 - **Visual Feedback**: Real-time save indicators and loading states
 
+### 📱 Progressive Web App (PWA)
+- **Installable**: Can be installed on desktop, Android, and iOS devices
+- **Offline Support**: Works completely offline - no internet required
+- **Fast Loading**: Cached resources for instant access
+- **Native Feel**: Standalone app experience without browser UI
+- **Auto-Updates**: Automatically updates when new version is available
+
 ### 📊 Statistics & Organization
 - **Entry Statistics**: View total entries, monthly counts, and active days
 - **Date Selection**: Pick any date to view or create entries
@@ -124,6 +131,55 @@ npm run build
 ```
 
 The built files will be in the `dist/` directory, ready for deployment.
+
+### Installing as a Progressive Web App (PWA)
+
+**My Diary is a Progressive Web App (PWA)** - this means you can install it on your device and use it completely offline!
+
+#### Desktop Installation (Chrome/Edge)
+
+1. **Open the application** in your browser
+2. **Look for the install icon** in the address bar (or a popup will appear)
+3. **Click "Install"** when prompted
+4. The app will be installed and accessible from your desktop/start menu
+5. **Works completely offline** - no internet connection needed!
+
+#### Mobile Installation (Android)
+
+1. **Open the application** in Chrome browser
+2. **Tap the menu** (three dots) in the top-right
+3. **Select "Add to Home Screen"** or "Install App"
+4. **Confirm installation**
+5. The app icon will appear on your home screen
+6. **Works completely offline** - no internet connection needed!
+
+#### Mobile Installation (iOS/Safari)
+
+1. **Open the application** in Safari browser
+2. **Tap the Share button** (square with arrow)
+3. **Scroll down and tap "Add to Home Screen"**
+4. **Customize the name** if desired
+5. **Tap "Add"**
+6. The app icon will appear on your home screen
+7. **Works completely offline** - no internet connection needed!
+
+#### Offline Features
+
+Once installed, the app works **100% offline**:
+- ✅ Create and edit diary entries
+- ✅ Add images to entries
+- ✅ View all your entries
+- ✅ Export/import backups
+- ✅ All data stored locally on your device
+- ✅ No internet connection required
+
+#### Benefits of Installing
+
+- **Faster access** - Launch like a native app
+- **Offline functionality** - Works without internet
+- **Home screen icon** - Easy access from your device
+- **Standalone window** - No browser UI clutter
+- **Better performance** - Cached resources load instantly
 
 ## 📖 Usage Guide
 
@@ -296,6 +352,12 @@ The project uses:
 - Verify Node.js version is 16 or higher
 - Clear `node_modules` and run `npm install` again
 - Check browser console for error messages
+
+**Install prompt not showing**
+- Make sure you're using a supported browser (Chrome, Edge, Safari)
+- The app must be served over HTTPS (or localhost for development)
+- Clear browser cache and reload
+- Check if the app is already installed
 
 ### Browser Compatibility
 - Chrome/Chromium (recommended)

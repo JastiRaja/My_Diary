@@ -4,6 +4,7 @@ import ProfileSelector from './components/ProfileSelector';
 import LoginScreen from './components/LoginScreen';
 import DiaryDashboard from './components/DiaryDashboard';
 import DiaryEditor from './components/DiaryEditor';
+import InstallPrompt from './components/InstallPrompt';
 import SecureStorage from './utils/storage';
 
 function App() {
@@ -267,61 +268,67 @@ function App() {
     }
   };
 
-  if (viewMode === 'profiles') {
-    return (
-      <ProfileSelector
-        users={users}
-        onSelectUser={handleSelectUser}
-        onCreateUser={handleCreateUser}
-        onImport={handleImport}
-        onImportSuccess={handleImportFromLogin}
-      />
-    );
-  }
+  return (
+    <>
+      {viewMode === 'profiles' && (
+        <>
+          <ProfileSelector
+            users={users}
+            onSelectUser={handleSelectUser}
+            onCreateUser={handleCreateUser}
+            onImport={handleImport}
+            onImportSuccess={handleImportFromLogin}
+          />
+          <InstallPrompt />
+        </>
+      )}
 
-  if (viewMode === 'login') {
-    return (
-      <LoginScreen
-        user={selectedUser}
-        onLogin={handleLogin}
-        onBack={handleBackFromLogin}
-        isCreating={!selectedUser}
-        onCreateUser={handleCreateNewUser}
-        onPasscodeReset={handlePasscodeReset}
-        onImport={handleImport}
-        onImportSuccess={handleImportFromLogin}
-      />
-    );
-  }
+      {viewMode === 'login' && (
+        <>
+          <LoginScreen
+            user={selectedUser}
+            onLogin={handleLogin}
+            onBack={handleBackFromLogin}
+            isCreating={!selectedUser}
+            onCreateUser={handleCreateNewUser}
+            onPasscodeReset={handlePasscodeReset}
+            onImport={handleImport}
+            onImportSuccess={handleImportFromLogin}
+          />
+          <InstallPrompt />
+        </>
+      )}
 
-  if (viewMode === 'diary' && currentUser) {
-    return (
-      <DiaryDashboard
-        user={currentUser}
-        entries={entries}
-        onCreateEntry={handleCreateEntry}
-        onEditEntry={handleEditEntry}
-        onDeleteEntry={handleDeleteEntry}
-        onLogout={handleLogout}
-        onDeleteProfile={handleDeleteUser}
-        onExport={handleExport}
-        onImport={handleImport}
-      />
-    );
-  }
+      {viewMode === 'diary' && currentUser && (
+        <>
+          <DiaryDashboard
+            user={currentUser}
+            entries={entries}
+            onCreateEntry={handleCreateEntry}
+            onEditEntry={handleEditEntry}
+            onDeleteEntry={handleDeleteEntry}
+            onLogout={handleLogout}
+            onDeleteProfile={handleDeleteUser}
+            onExport={handleExport}
+            onImport={handleImport}
+          />
+          <InstallPrompt />
+        </>
+      )}
 
-  if (viewMode === 'entry' && currentEntry) {
-    return (
-      <DiaryEditor
-        entry={currentEntry}
-        onSave={handleSaveEntry}
-        onBack={handleBackFromEntry}
-        isNew={isNewEntry}
-      />
-    );
-  }
-
-  return null;
+      {viewMode === 'entry' && currentEntry && (
+        <>
+          <DiaryEditor
+            entry={currentEntry}
+            onSave={handleSaveEntry}
+            onBack={handleBackFromEntry}
+            isNew={isNewEntry}
+          />
+          <InstallPrompt />
+        </>
+      )}
+    </>
+  );
 }
 
 export default App;

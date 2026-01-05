@@ -1,0 +1,16 @@
+PWA Icons Required
+
+To complete PWA setup, you need to create icon files:
+
+1. pwa-192x192.png (192x192 pixels)
+2. pwa-512x512.png (512x512 pixels)
+
+You can:
+- Use an online icon generator
+- Create them in an image editor
+- Use a diary/journal themed icon
+
+Place these files in the /public directory.
+
+For now, the app will work without icons, but they're recommended for a better install experience.
+
