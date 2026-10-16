@@ -31,3 +31,4 @@ console.log('Icons need to be created as PNG files.');
 console.log('Please create pwa-192x192.png and pwa-512x512.png in the public folder.');
 console.log('You can use an online tool like https://realfavicongenerator.net/');
 
+

@@ -1,9 +1,13 @@
 import SimpleEncryption from './encryption';
-import { User, DiaryEntry, BackupData } from '../types';
+import { User, DiaryEntry, Artwork, BackupData, ActiveSession, ArtworkDraft, EntryDraft } from '../types';
 
 class SecureStorage {
   private static readonly USERS_KEY = 'diary_users';
   private static readonly ENTRIES_PREFIX = 'diary_entries_';
+  private static readonly ARTWORKS_PREFIX = 'diary_artworks_';
+  private static readonly ACTIVE_SESSION_KEY = 'diary_active_session';
+  private static readonly ARTWORK_DRAFT_PREFIX = 'diary_artwork_draft_';
+  private static readonly ENTRY_DRAFT_PREFIX = 'diary_entry_draft_';
   
   // Save users list (encrypted with a master key)
   static saveUsers(users: User[]): void {
@@ -80,6 +84,7 @@ class SecureStorage {
       
       // Re-encrypt existing entries with new passcode using the old passcode
       this.reEncryptUserEntries(userId, oldSecretCode, newSecretCode);
+      this.reEncryptUserArtworks(userId, oldSecretCode, newSecretCode);
       
       console.log('Storage: Passcode reset successful');
       return true;
@@ -108,7 +113,7 @@ class SecureStorage {
         localStorage.setItem(this.ENTRIES_PREFIX + userId, newEncrypted);
         
         console.log('Successfully re-encrypted entries with new passcode');
-      } catch (decryptError) {
+      } catch {
         console.warn('Could not decrypt with old passcode, entries may be lost');
         // Clear the old encrypted data since we can't decrypt it
         localStorage.removeItem(this.ENTRIES_PREFIX + userId);
@@ -116,6 +121,31 @@ class SecureStorage {
     } catch (error) {
       console.warn('Could not re-encrypt entries, clearing old data:', error);
       localStorage.removeItem(this.ENTRIES_PREFIX + userId);
+    }
+  }
+
+  // Re-encrypt user artworks with new passcode
+  private static reEncryptUserArtworks(userId: string, oldSecretCode: string, newSecretCode: string): void {
+    try {
+      const encrypted = localStorage.getItem(this.ARTWORKS_PREFIX + userId);
+      if (!encrypted) {
+        return;
+      }
+      
+      try {
+        const decrypted = SimpleEncryption.decrypt(encrypted, oldSecretCode);
+        const artworks = JSON.parse(decrypted);
+        
+        const newEncrypted = SimpleEncryption.encrypt(JSON.stringify(artworks), newSecretCode);
+        localStorage.setItem(this.ARTWORKS_PREFIX + userId, newEncrypted);
+        console.log('Successfully re-encrypted artworks with new passcode');
+      } catch (decryptError) {
+        console.warn('Could not decrypt artworks with old passcode:', decryptError);
+        localStorage.removeItem(this.ARTWORKS_PREFIX + userId);
+      }
+    } catch (error) {
+      console.warn('Could not re-encrypt artworks:', error);
+      localStorage.removeItem(this.ARTWORKS_PREFIX + userId);
     }
   }
   
@@ -181,10 +211,167 @@ class SecureStorage {
       return [];
     }
   }
+
+  // Save user artworks (encrypted with user's secret code)
+  static saveUserArtworks(userId: string, artworks: Artwork[], secretCode: string): {
+    success: boolean;
+    error?: string;
+  } {
+    try {
+      const userArtworks = artworks.filter(artwork => artwork.userId === userId);
+      const encrypted = SimpleEncryption.encrypt(JSON.stringify(userArtworks), secretCode);
+      
+      const estimatedSize = encrypted.length;
+      const maxSize = 5 * 1024 * 1024; // 5MB limit
+      
+      if (estimatedSize > maxSize) {
+        return {
+          success: false,
+          error: `Artworks storage too large (${(estimatedSize / 1024 / 1024).toFixed(2)}MB). Please delete older artworks.`
+        };
+      }
+      
+      localStorage.setItem(this.ARTWORKS_PREFIX + userId, encrypted);
+      return { success: true };
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'QuotaExceededError') {
+        return {
+          success: false,
+          error: 'Storage quota exceeded. Please export your data or delete old artworks.'
+        };
+      }
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to save artwork'
+      };
+    }
+  }
+
+  // Load user artworks
+  static loadUserArtworks(userId: string, secretCode: string): Artwork[] {
+    try {
+      const encrypted = localStorage.getItem(this.ARTWORKS_PREFIX + userId);
+      if (!encrypted) return [];
+      
+      const decrypted = SimpleEncryption.decrypt(encrypted, secretCode);
+      return JSON.parse(decrypted);
+    } catch (error) {
+      console.warn('Failed to load artworks for user:', userId, error);
+      return [];
+    }
+  }
   
   // Clear all data for a user
   static clearUserData(userId: string): void {
     localStorage.removeItem(this.ENTRIES_PREFIX + userId);
+    localStorage.removeItem(this.ARTWORKS_PREFIX + userId);
+    this.clearArtworkDraft(userId);
+    this.clearEntryDraft(userId);
+    const active = this.getActiveSession();
+    if (active && active.userId === userId) {
+      this.clearActiveSession();
+    }
+  }
+
+  // Save active session (synced to both sessionStorage and localStorage)
+  static saveActiveSession(session: ActiveSession): void {
+    try {
+      const masterKey = 'MyDiaryApp2024';
+      const encrypted = SimpleEncryption.encrypt(JSON.stringify(session), masterKey);
+      sessionStorage.setItem(this.ACTIVE_SESSION_KEY, encrypted);
+      localStorage.setItem(this.ACTIVE_SESSION_KEY, encrypted);
+    } catch (error) {
+      console.warn('Failed to save active session:', error);
+    }
+  }
+
+  // Get active session
+  static getActiveSession(): ActiveSession | null {
+    try {
+      const masterKey = 'MyDiaryApp2024';
+      const encrypted = sessionStorage.getItem(this.ACTIVE_SESSION_KEY) || localStorage.getItem(this.ACTIVE_SESSION_KEY);
+      if (!encrypted) return null;
+
+      const decrypted = SimpleEncryption.decrypt(encrypted, masterKey);
+      const session = JSON.parse(decrypted) as ActiveSession;
+      if (!session || !session.userId || !session.secretCode) {
+        return null;
+      }
+      return session;
+    } catch (error) {
+      console.warn('Failed to load active session:', error);
+      return null;
+    }
+  }
+
+  // Clear active session
+  static clearActiveSession(): void {
+    try {
+      sessionStorage.removeItem(this.ACTIVE_SESSION_KEY);
+      localStorage.removeItem(this.ACTIVE_SESSION_KEY);
+    } catch {
+      // ignore
+    }
+  }
+
+  // Save artwork draft
+  static saveArtworkDraft(draft: ArtworkDraft): void {
+    try {
+      sessionStorage.setItem(this.ARTWORK_DRAFT_PREFIX + draft.userId, JSON.stringify(draft));
+    } catch (error) {
+      console.warn('Failed to save artwork draft:', error);
+    }
+  }
+
+  // Get artwork draft
+  static getArtworkDraft(userId: string): ArtworkDraft | null {
+    try {
+      const data = sessionStorage.getItem(this.ARTWORK_DRAFT_PREFIX + userId);
+      if (!data) return null;
+      return JSON.parse(data) as ArtworkDraft;
+    } catch (error) {
+      console.warn('Failed to load artwork draft:', error);
+      return null;
+    }
+  }
+
+  // Clear artwork draft
+  static clearArtworkDraft(userId: string): void {
+    try {
+      sessionStorage.removeItem(this.ARTWORK_DRAFT_PREFIX + userId);
+    } catch {
+      // ignore
+    }
+  }
+
+  // Save entry draft
+  static saveEntryDraft(draft: EntryDraft): void {
+    try {
+      sessionStorage.setItem(this.ENTRY_DRAFT_PREFIX + draft.userId, JSON.stringify(draft));
+    } catch (error) {
+      console.warn('Failed to save entry draft:', error);
+    }
+  }
+
+  // Get entry draft
+  static getEntryDraft(userId: string): EntryDraft | null {
+    try {
+      const data = sessionStorage.getItem(this.ENTRY_DRAFT_PREFIX + userId);
+      if (!data) return null;
+      return JSON.parse(data) as EntryDraft;
+    } catch (error) {
+      console.warn('Failed to load entry draft:', error);
+      return null;
+    }
+  }
+
+  // Clear entry draft
+  static clearEntryDraft(userId: string): void {
+    try {
+      sessionStorage.removeItem(this.ENTRY_DRAFT_PREFIX + userId);
+    } catch {
+      // ignore
+    }
   }
 
   // Delete a user profile and all their data
@@ -226,8 +413,8 @@ class SecureStorage {
     };
   }
 
-  // Export single user data (with entries) - unencrypted for internal use
-  static exportUserData(userId: string, secretCode: string, entries: DiaryEntry[]): BackupData {
+  // Export single user data (with entries and artworks) - unencrypted for internal use
+  static exportUserData(userId: string, secretCode: string, entries: DiaryEntry[], artworks?: Artwork[]): BackupData {
     const users = this.loadUsers();
     const user = users.find(u => u.id === userId);
     
@@ -243,6 +430,7 @@ class SecureStorage {
         secretCode: secretCode // Include secret code for this user's backup
       }],
       entries: entries.filter(e => e.userId === userId),
+      artworks: artworks || this.loadUserArtworks(userId, secretCode),
       encrypted: false
     };
   }
@@ -312,6 +500,13 @@ class SecureStorage {
                 console.warn(`Failed to save entries for user ${user.id}:`, saveResult.error);
               }
             }
+
+            if (backupData.artworks) {
+              const userArtworks = backupData.artworks.filter(a => a.userId === user.id);
+              if (userArtworks.length > 0) {
+                this.saveUserArtworks(user.id, userArtworks, user.secretCode);
+              }
+            }
           }
         });
       } else {
@@ -360,7 +555,7 @@ class SecureStorage {
         this.saveUsers(allUsers);
         importedUsers = newUsers.length + updatedUsers.length;
 
-        // Save entries for users that have secret codes
+        // Save entries and artworks for users that have secret codes
         backupData.users.forEach(user => {
           if (user.secretCode) {
             const userEntries = backupData.entries.filter(e => e.userId === user.id);
@@ -377,13 +572,27 @@ class SecureStorage {
                 } else {
                   console.warn(`Failed to save merged entries for user ${user.id}:`, saveResult.error);
                 }
-              } catch (error) {
+              } catch {
                 // If can't load existing entries, just save the backup entries
                 const saveResult = this.saveUserEntries(user.id, userEntries, user.secretCode);
                 if (saveResult.success) {
                   importedEntries += userEntries.length;
                 } else {
                   console.warn(`Failed to save entries for user ${user.id}:`, saveResult.error);
+                }
+              }
+            }
+
+            if (backupData.artworks) {
+              const userArtworks = backupData.artworks.filter(a => a.userId === user.id);
+              if (userArtworks.length > 0) {
+                try {
+                  const existingArtworks = this.loadUserArtworks(user.id, user.secretCode);
+                  const existingArtworkIds = new Set(existingArtworks.map(a => a.id));
+                  const newArtworks = userArtworks.filter(a => !existingArtworkIds.has(a.id));
+                  this.saveUserArtworks(user.id, [...existingArtworks, ...newArtworks], user.secretCode);
+                } catch {
+                  this.saveUserArtworks(user.id, userArtworks, user.secretCode);
                 }
               }
             }

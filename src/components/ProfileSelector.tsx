@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { User, BackupData } from '../types';
-import { Plus, User as UserIcon, Upload, X, Info, CheckCircle, AlertCircle, Eye, EyeOff, Lock, Trash2, AlertTriangle, Download } from 'lucide-react';
+import { Plus, User as UserIcon, Upload, X, Info, CheckCircle, AlertCircle, Eye, EyeOff, Download, BookOpen } from 'lucide-react';
 import SimpleEncryption from '../utils/encryption';
 
 interface ProfileSelectorProps {
@@ -192,11 +192,9 @@ const ProfileSelector: React.FC<ProfileSelectorProps> = ({
       <div className="w-full max-w-4xl">
         <div className="text-center mb-12">
           <div className="mb-6">
-            <img 
-              src="https://images.pexels.com/photos/1925536/pexels-photo-1925536.jpeg?auto=compress&cs=tinysrgb&w=400" 
-              alt="Diary and pen" 
-              className="w-24 h-24 mx-auto rounded-full object-cover shadow-lg"
-            />
+            <div className="w-24 h-24 mx-auto rounded-3xl bg-gradient-to-tr from-purple-500 to-pink-500 flex items-center justify-center text-white shadow-xl shadow-purple-900/40 border border-white/20">
+              <BookOpen className="w-12 h-12" />
+            </div>
           </div>
           <h1 className="text-4xl md:text-6xl font-bold text-white mb-4">
             My Diary
@@ -207,7 +205,7 @@ const ProfileSelector: React.FC<ProfileSelectorProps> = ({
         </div>
 
         {/* Offline/PWA Info Banner */}
-        {!window.matchMedia('(display-mode: standalone)').matches && (window.navigator as any).standalone !== true && (
+        {!window.matchMedia('(display-mode: standalone)').matches && (window.navigator as unknown as { standalone?: boolean }).standalone !== true && (
           <div className="mb-8 bg-gradient-to-r from-blue-500/20 to-cyan-500/20 backdrop-blur-md rounded-2xl p-6 border border-blue-300/30 shadow-lg">
             <div className="flex items-start">
               <Download className="w-6 h-6 text-blue-300 mr-3 mt-1 flex-shrink-0" />

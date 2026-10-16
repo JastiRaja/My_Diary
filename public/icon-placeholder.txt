@@ -14,3 +14,4 @@ Place these files in the /public directory.
 
 For now, the app will work without icons, but they're recommended for a better install experience.
 
+

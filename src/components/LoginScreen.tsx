@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { User, BackupData } from '../types';
-import { ArrowLeft, Eye, EyeOff, HelpCircle, Upload, Lock, X, CheckCircle, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Eye, EyeOff, HelpCircle, Upload, X, CheckCircle, AlertCircle, BookOpen } from 'lucide-react';
 import SecureStorage from '../utils/storage';
 import SimpleEncryption from '../utils/encryption';
 
@@ -411,11 +411,9 @@ const LoginScreen: React.FC<LoginScreenProps> = ({
         <div className="bg-white/10 backdrop-blur-md rounded-2xl p-8 shadow-2xl border border-white/20">
           <div className="text-center mb-8">
             <div className="mb-6">
-              <img 
-                src="https://images.pexels.com/photos/1925536/pexels-photo-1925536.jpeg?auto=compress&cs=tinysrgb&w=400" 
-                alt="Open diary" 
-                className="w-20 h-20 mx-auto rounded-full object-cover shadow-lg"
-              />
+              <div className="w-20 h-20 mx-auto rounded-3xl bg-gradient-to-tr from-purple-500 to-pink-500 flex items-center justify-center text-white shadow-xl shadow-purple-900/40 border border-white/20">
+                <BookOpen className="w-10 h-10" />
+              </div>
             </div>
             <h2 className="text-3xl font-bold text-white mb-2">
               {getTitle()}

@@ -70,3 +70,4 @@ class ImageCompression {
 export default ImageCompression;
 
 
+

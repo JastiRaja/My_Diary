@@ -1,20 +1,24 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { DiaryEntry } from '../types';
-import { ArrowLeft, Save, Calendar, Type, Image as ImageIcon, X, AlertCircle } from 'lucide-react';
+import { DiaryEntry, PaperStyle, ArtworkDraft } from '../types';
+import { ArrowLeft, Save, Calendar, Type, Image as ImageIcon, X, AlertCircle, Palette, CheckCircle, BookOpen } from 'lucide-react';
 import ImageCompression from '../utils/imageCompression';
+import DrawingStudioModal from './DrawingStudioModal';
+import SecureStorage from '../utils/storage';
 
 interface DiaryEditorProps {
   entry: DiaryEntry | null;
   onSave: (content: string, images: string[]) => void;
   onBack: () => void;
   isNew: boolean;
+  onSaveArtwork?: (artwork: { title: string; imageData: string; paperStyle: PaperStyle }) => void;
 }
 
 const DiaryEditor: React.FC<DiaryEditorProps> = ({
   entry,
   onSave,
   onBack,
-  isNew
+  isNew,
+  onSaveArtwork
 }) => {
   const [content, setContent] = useState(entry?.content || '');
   const [images, setImages] = useState<string[]>(entry?.images || []);
@@ -22,7 +26,32 @@ const DiaryEditor: React.FC<DiaryEditorProps> = ({
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isCompressing, setIsCompressing] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [showDrawingStudio, setShowDrawingStudio] = useState(false);
+  const [restoredNotice, setRestoredNotice] = useState<string | null>(null);
+  const [restoredArtDraft, setRestoredArtDraft] = useState<ArtworkDraft | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+
+  // Restore entry and artwork draft across refresh
+  useEffect(() => {
+    if (!entry) return;
+    const draft = SecureStorage.getEntryDraft(entry.userId);
+    if (draft && draft.entryId === entry.id) {
+      if (draft.content !== entry.content || (draft.images && draft.images.length > (entry.images?.length || 0))) {
+        setContent(draft.content);
+        if (draft.images && draft.images.length > 0) {
+          setImages(draft.images);
+        }
+        setRestoredNotice('Restored your unsaved draft from this session.');
+      }
+    }
+
+    // Check if drawing studio was open in this entry
+    const artDraft = SecureStorage.getArtworkDraft(entry.userId);
+    if (artDraft && artDraft.isOpen && artDraft.source === 'editor') {
+      setRestoredArtDraft(artDraft);
+      setShowDrawingStudio(true);
+    }
+  }, [entry]);
 
   useEffect(() => {
     const contentChanged = content !== (entry?.content || '');
@@ -30,13 +59,59 @@ const DiaryEditor: React.FC<DiaryEditorProps> = ({
     setHasChanges(contentChanged || imagesChanged);
   }, [content, images, entry?.content, entry?.images]);
 
+  // Auto-save draft and protect against refresh when changes are made
+  useEffect(() => {
+    if (!entry) return;
+    if (hasChanges) {
+      SecureStorage.saveEntryDraft({
+        userId: entry.userId,
+        entryId: entry.id,
+        isNewEntry: isNew,
+        date: entry.date,
+        content,
+        images,
+        pageType: entry.pageType
+      });
+
+      const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+        e.preventDefault();
+        e.returnValue = '';
+        return '';
+      };
+      window.addEventListener('beforeunload', handleBeforeUnload);
+      return () => {
+        window.removeEventListener('beforeunload', handleBeforeUnload);
+      };
+    }
+  }, [entry, hasChanges, content, images, isNew]);
+
   const handleSave = () => {
     setSaveError(null);
     try {
+      if (entry) {
+        SecureStorage.clearEntryDraft(entry.userId);
+      }
       onSave(content, images);
-    setHasChanges(false);
+      setHasChanges(false);
+      setRestoredNotice(null);
     } catch (error) {
       setSaveError(error instanceof Error ? error.message : 'Failed to save entry');
+    }
+  };
+
+  const handleBack = () => {
+    if (hasChanges) {
+      if (window.confirm('You have unsaved changes. Are you sure you want to discard them?')) {
+        if (entry) {
+          SecureStorage.clearEntryDraft(entry.userId);
+        }
+        onBack();
+      }
+    } else {
+      if (entry) {
+        SecureStorage.clearEntryDraft(entry.userId);
+      }
+      onBack();
     }
   };
 
@@ -110,6 +185,14 @@ const DiaryEditor: React.FC<DiaryEditorProps> = ({
     setImages((prev) => prev.filter((_, i) => i !== index));
   };
 
+  const handleAttachArtwork = (imageDataUrl: string) => {
+    if (images.length >= 5) {
+      setSaveError('Maximum of 5 images/drawings allowed per entry.');
+      return;
+    }
+    setImages((prev) => [...prev, imageDataUrl]);
+  };
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', { 
@@ -129,7 +212,7 @@ const DiaryEditor: React.FC<DiaryEditorProps> = ({
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <button
-              onClick={onBack}
+              onClick={handleBack}
               className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition-colors"
             >
               <ArrowLeft className="w-5 h-5" />
@@ -161,16 +244,29 @@ const DiaryEditor: React.FC<DiaryEditorProps> = ({
 
       {/* Editor */}
       <div className="max-w-4xl mx-auto px-4 py-8">
+        {restoredNotice && (
+          <div className="mb-4 bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-2.5 rounded-xl text-sm flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <CheckCircle className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+              <span>{restoredNotice}</span>
+            </div>
+            <button
+              onClick={() => setRestoredNotice(null)}
+              className="text-emerald-700 hover:text-emerald-900 text-xs font-semibold"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
+
         <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
           <div className="p-6">
             {entry && (
               <div className="mb-6">
                 <div className="flex items-center justify-center mb-4">
-                  <img 
-                    src="https://images.pexels.com/photos/1925536/pexels-photo-1925536.jpeg?auto=compress&cs=tinysrgb&w=400" 
-                    alt="Writing in diary" 
-                    className="w-16 h-16 rounded-full object-cover shadow-md"
-                  />
+                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shadow-md text-white">
+                    <BookOpen className="w-8 h-8" />
+                  </div>
                 </div>
                 <h1 className="text-2xl font-bold text-gray-900 mb-2">
                   {isNew ? 'New Entry' : 'Edit Entry'}
@@ -185,21 +281,32 @@ const DiaryEditor: React.FC<DiaryEditorProps> = ({
             <div className="mb-4">
               <div className="flex items-center justify-between mb-2">
                 <label className="text-sm font-medium text-gray-700">
-                  Images ({images.length}/5)
+                  Images & Artwork ({images.length}/5)
                   {isCompressing && (
                     <span className="ml-2 text-xs text-blue-600">Compressing...</span>
                   )}
                 </label>
                 {images.length < 5 && (
-                  <button
-                    type="button"
-                    onClick={() => imageInputRef.current?.click()}
-                    disabled={isCompressing}
-                    className="flex items-center space-x-2 px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <ImageIcon className="w-4 h-4" />
-                    <span>{isCompressing ? 'Processing...' : 'Add Image'}</span>
-                  </button>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowDrawingStudio(true)}
+                      disabled={isCompressing}
+                      className="flex items-center space-x-1.5 px-3 py-1.5 text-sm bg-gradient-to-r from-purple-50 to-pink-50 hover:from-purple-100 hover:to-pink-100 text-purple-700 border border-purple-200/80 rounded-lg transition-all shadow-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Palette className="w-4 h-4 text-purple-600" />
+                      <span>Draw / Doodle</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => imageInputRef.current?.click()}
+                      disabled={isCompressing}
+                      className="flex items-center space-x-1.5 px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                    >
+                      <ImageIcon className="w-4 h-4" />
+                      <span>{isCompressing ? 'Processing...' : 'Add Image'}</span>
+                    </button>
+                  </div>
                 )}
               </div>
               
@@ -321,6 +428,35 @@ const DiaryEditor: React.FC<DiaryEditorProps> = ({
           )}
         </div>
       </div>
+
+      {/* Drawing Studio Modal */}
+      {(showDrawingStudio || !!restoredArtDraft) && (
+        <DrawingStudioModal
+          isOpen={showDrawingStudio || !!restoredArtDraft}
+          onClose={() => {
+            setShowDrawingStudio(false);
+            setRestoredArtDraft(null);
+          }}
+          onAttachToEntry={handleAttachArtwork}
+          onSaveArtwork={onSaveArtwork}
+          initialTitle={
+            restoredArtDraft
+              ? restoredArtDraft.title
+              : `Sketch - ${entry ? formatDate(entry.date) : 'Today'}`
+          }
+          initialPaperStyle={
+            restoredArtDraft
+              ? restoredArtDraft.paperStyle
+              : entry?.pageType === 'ruled'
+              ? 'ruled'
+              : 'blank'
+          }
+          initialImage={restoredArtDraft ? restoredArtDraft.imageData : undefined}
+          artworkId={restoredArtDraft ? restoredArtDraft.artworkId : undefined}
+          userId={entry?.userId}
+          source="editor"
+        />
+      )}
     </div>
   );
 };

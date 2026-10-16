@@ -53,7 +53,7 @@ class SimpleEncryption {
       }
       
       return result;
-    } catch (error) {
+    } catch {
       throw new Error('Failed to decrypt data');
     }
   }

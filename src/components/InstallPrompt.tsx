@@ -14,14 +14,14 @@ const InstallPrompt: React.FC = () => {
   useEffect(() => {
     // Check if app is already installed
     if (window.matchMedia('(display-mode: standalone)').matches || 
-        (window.navigator as any).standalone === true) {
+        (window.navigator as unknown as { standalone?: boolean }).standalone === true) {
       setIsInstalled(true);
       return;
     }
 
     // For iOS Safari - check if it's already added to home screen
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-    const isInStandaloneMode = (window.navigator as any).standalone === true;
+    const isInStandaloneMode = (window.navigator as unknown as { standalone?: boolean }).standalone === true;
     if (isIOS && isInStandaloneMode) {
       setIsInstalled(true);
       return;
@@ -73,7 +73,7 @@ const InstallPrompt: React.FC = () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       window.removeEventListener('show-install-prompt', handleShowInstallPrompt);
     };
-  }, [deferredPrompt]);
+  }, [deferredPrompt, isInstalled]);
 
   const handleInstallClick = async () => {
     if (!deferredPrompt) return;
